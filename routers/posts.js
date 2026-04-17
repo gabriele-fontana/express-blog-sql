@@ -16,13 +16,33 @@ router.get('/', async (req, res) => {
 // SHOW /posts/:id - GET singolo post
 router.get('/:id', async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT * FROM posts WHERE id = ?', [req.params.id]);
+        // 1) Recupero il post
+        const [postRows] = await db.query(
+            'SELECT * FROM posts WHERE id = ?',
+            [req.params.id]
+        );
 
-        if (rows.length === 0) {
+        if (postRows.length === 0) {
             return res.status(404).json({ error: 'Post non trovato' });
         }
 
-        res.json(rows[0]);
+        const post = postRows[0];
+
+        // 2) Recupero i tag associati
+        const [tagRows] = await db.query(
+            `SELECT tags.id, tags.label
+             FROM tags
+             JOIN post_tag ON tags.id = post_tag.tag_id
+             WHERE post_tag.post_id = ?`,
+            [req.params.id]
+        );
+
+        // 3) Restituisco il post con i tag
+        res.json({
+            ...post,
+            tags: tagRows
+        });
+
     } catch (err) {
         console.error('❌ Errore GET /posts/:id:', err);
         res.status(500).json({ error: 'Errore nel recupero del post' });
